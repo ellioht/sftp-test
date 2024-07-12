@@ -1,0 +1,12 @@
+.idea/
+**/*.db
+**/*.dat
+**/*.lck
+
+go.work
+
+*.out
+
+*.test
+
+*.tmp
