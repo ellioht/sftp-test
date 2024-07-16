@@ -24,8 +24,9 @@ type Config struct {
 }
 
 type Container struct {
-	Close func()
+	Id    string
 	Port  string
+	close func() error
 }
 
 func NewContainer(ctx context.Context, cfg *Config) (*Container, error) {
@@ -87,25 +88,32 @@ func NewContainer(ctx context.Context, cfg *Config) (*Container, error) {
 		return nil, err
 	}
 
-	cleanup := func() {
+	cleanup := func() error {
 		if err = cli.ContainerStop(ctx, res.ID, container.StopOptions{}); err != nil {
-			panic(err)
+			return err
 		}
 
 		if err = cli.ContainerRemove(ctx, res.ID, container.RemoveOptions{}); err != nil {
-			panic(err)
+			return err
 		}
 
 		err = img.Close()
 		if err != nil {
-			panic(err)
+			return err
 		}
+
+		return nil
 	}
 
 	return &Container{
-		Close: cleanup,
+		Id:    res.ID,
 		Port:  hostPort,
+		close: cleanup,
 	}, nil
+}
+
+func (c *Container) Close() error {
+	return c.close()
 }
 
 func findAvailablePort() (string, error) {

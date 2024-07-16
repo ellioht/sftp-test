@@ -6,8 +6,42 @@ import (
 	"time"
 )
 
-func CreateSftpClient() (*sftp.Client, *ssh.Client, error) {
-	cfg := &ssh.ClientConfig{
+type SftpClient struct {
+	Client    *sftp.Client
+	sshClient *ssh.Client
+}
+
+func NewSftpClient(cfg *ssh.ClientConfig) (*SftpClient, error) {
+	client, err := ssh.Dial("tcp", "localhost:22", cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		if err = client.Close(); err != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+
+	return &SftpClient{
+		Client: sftpClient,
+	}, nil
+}
+
+func (s *SftpClient) Close() error {
+	if err := s.Client.Close(); err != nil {
+		return err
+	}
+	if err := s.sshClient.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateDefaultSSHConfig() *ssh.ClientConfig {
+	return &ssh.ClientConfig{
 		User: "foo",
 		Auth: []ssh.AuthMethod{
 			ssh.Password("pass"),
@@ -15,19 +49,4 @@ func CreateSftpClient() (*sftp.Client, *ssh.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         20 * time.Second,
 	}
-
-	client, err := ssh.Dial("tcp", "localhost:22", cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sftpClient, err := sftp.NewClient(client)
-	if err != nil {
-		if err = client.Close(); err != nil {
-			return nil, nil, err
-		}
-		return nil, nil, err
-	}
-
-	return sftpClient, client, nil
 }
